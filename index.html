@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>생각의 숲</title>
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Grandiflora+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+
+  <!-- html2canvas (이미지 저장용) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+
+  <!-- React 18 + ReactDOM 18 (UMD) & Babel (브라우저용 JSX 변환) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    .animate-fade-in { animation: fadeIn .4s ease both }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+  </style>
+</head>
+<body style="font-family:'Noto Sans KR', sans-serif;">
+  <div id="root"></div>
+
+  <!-- JSX 코드: Babel이 변환 -->
+  <script type="text/babel" data-presets="env,react">
+    const { useState, useEffect, useRef } = React;
+
+    // --- 데이터 및 타입 정의 ---
+    const TREE_TYPES = {
+      regular: { emoji: '🌳', name: '보통나무', description: '친근하고 편안한', colors: { leaf: 'hsl(145, 50%, 88%)', text: 'hsl(145, 80%, 15%)' } },
+      cherry: { emoji: '🌸', name: '벚꽃나무', description: '두근두근 설레는', colors: { leaf: 'hsl(340, 100%, 92%)', text: 'hsl(340, 80%, 30%)' } },
+      ginkgo: { emoji: '🍂', name: '은행나무', description: '노랗고 아름다운', colors: { leaf: 'hsl(50, 100%, 85%)', text: 'hsl(40, 80%, 25%)' } },
+      winter: { emoji: '❄️', name: '겨울나무', description: '차분하고 깨끗한', colors: { leaf: 'hsl(210, 60%, 90%)', text: 'hsl(210, 50%, 25%)' } },
+      apple: { emoji: '🍎', name: '사과나무', description: '달콤하고 맛있는', colors: { leaf: 'hsl(120, 60%, 88%)', text: 'hsl(120, 70%, 20%)' } },
+      palm: { emoji: '🌴', name: '야자수', description: '여유롭고 시원한', colors: { leaf: 'hsl(45, 40%, 85%)', text: 'hsl(45, 30%, 30%)' } },
+    };
+
+    const CARD_COLORS = [
+      'hsl(0, 0%, 98%)',
+      'hsl(60, 100%, 90%)',
+      'hsl(120, 73%, 90%)',
+      'hsl(200, 100%, 90%)',
+      'hsl(270, 100%, 95%)',
+      'hsl(340, 100%, 92%)',
+    ];
+
+    // --- 아이콘 컴포넌트 ---
+    const Icon = ({ name, className }) => {
+      const icons = {
+        home: <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+        forest: <path d="M10 10.455a2.5 2.5 0 1 0-5 0v7.09A2.5 2.5 0 1 0 10 17.55v-7.095zM14 6.126a2.5 2.5 0 1 0-5 0v11.748a2.5 2.5 0 1 0 5 0V6.126zM19 12.196a2.5 2.5 0 1 0-5 0v5.608a2.5 2.5 0 1 0 5 0v-5.608z" />,
+        add: <><path d="M5 12h14" /><path d="M12 5v14" /></>,
+        arrowLeft: <><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></>,
+        save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8" /><path d="M7 3v5h8" /></>,
+        download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></>,
+        upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></>,
+        users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
+        edit: <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>,
+        check: <path d="M20 6 9 17l-5-5" />,
+        palette: <><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.667 0-.424-.163-.82-.437-1.125-.29-.32-1.04-.69-1.04-1.108v-1.166a2.153 2.153 0 0 0-1.042-1.875C10.658 14.85 9 13.84 9 12c0-1.84 1.658-2.85 2.116-3.125a2.153 2.153 0 0 0 1.042-1.875V6c0-.418.75-.788 1.04-1.108.274-.305.437-.701.437-1.125C13.648 2.746 12.926 2 12 2z"/></>,
+      };
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          {icons[name]}
+        </svg>
+      );
+    };
+
+    // --- Helper 컴포넌트 ---
+    const AnimatedEmoji = ({ emoji, isVisible }) => (
+      <div className={`absolute top-0 right-1 text-2xl transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+        {emoji}
+      </div>
+    );
+
+    const Toast = ({ message, isVisible, onDismiss }) => {
+      useEffect(() => {
+        if (isVisible) {
+          const timer = setTimeout(() => { onDismiss(); }, 3000);
+          return () => clearTimeout(timer);
+        }
+      }, [isVisible, onDismiss]);
+
+      return (
+        <div className={`fixed bottom-28 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+          {message}
+        </div>
+      );
+    };
+
+    // --- 페이지 컴포넌트 ---
+    const HomePage = ({ setPage }) => (
+      <div className="flex flex-col items-center justify-center h-full text-center p-4">
+        <h1 style={{ fontFamily: "'Grandiflora One', cursive", fontWeight: 700 }} className="text-5xl md:text-7xl font-bold text-gray-800 drop-shadow-md">
+          생각의 숲
+        </h1>
+        <p style={{ fontFamily: "'Grandiflora One', cursive" }} className="text-lg md:text-2xl text-gray-600 mt-2">Forest of Thoughts</p>
+        <div className="text-6xl md:text-8xl my-8 animate-bounce">🌳</div>
+        <p className="text-xl md:text-2xl text-gray-700 mb-8">나만의 특별한 생각의 숲을 만들어보세요!</p>
+        <button
+          onClick={() => setPage('select')}
+          className="flex items-center gap-2 bg-gradient-to-r from-yellow-300 to-yellow-200 text-yellow-800 font-bold text-xl px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+        >
+          <span>🌱</span><span>나무 심기 시작하기</span>
+        </button>
+      </div>
+    );
+
+    const SelectTreePage = ({ onSelectTree, setPage }) => (
+      <div className="w-full max-w-4xl mx-auto p-4">
+        <div className="text-center mb-8">
+          <button onClick={() => setPage('home')} className="absolute top-6 left-6 text-gray-500 hover:text-gray-800 transition-colors">
+            <Icon name="arrowLeft" className="w-8 h-8" />
+          </button>
+          <h2 className="text-4xl font-bold text-gray-800">어떤 나무를 심을까요?</h2>
+          <p className="text-lg text-gray-600 mt-2">마음에 드는 나무를 골라 생각을 기록해보세요.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Object.entries(TREE_TYPES).map(([key, { emoji, name, description }]) => (
+            <div
+              key={key}
+              onClick={() => onSelectTree(key)}
+              className="cursor-pointer bg-white/80 backdrop-blur-sm rounded-2xl p-6 text-center shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 hover:scale-105"
+            >
+              <div className="text-6xl mb-4 animate-bounce">{emoji}</div>
+              <h3 className="text-2xl font-bold text-gray-800">{name}</h3>
+              <p className="text-gray-600">{description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    const CreateTreePage = ({ treeType, onSave, setPage }) => {
+      const tree = TREE_TYPES[treeType];
+      const [treeName, setTreeName] = useState(tree.name);
+      const [trunk, setTrunk] = useState('');
+      const [leftLeaf, setLeftLeaf] = useState('');
+      const [rightLeaf, setRightLeaf] = useState('');
+      const [questionFruit, setQuestionFruit] = useState('');
+
+      const [isTrunkActive, setTrunkActive] = useState(false);
+      const [isLeftLeafActive, setLeftLeafActive] = useState(false);
+      const [isRightLeafActive, setRightLeafActive] = useState(false);
+      const [isQuestionFruitActive, setQuestionFruitActive] = useState(false);
+
+      const handleSave = () => {
+        if (!trunk && !leftLeaf && !rightLeaf && !questionFruit) {
+          alert('하나 이상의 생각을 입력해주세요!');
+          return;
+        }
+        const newTree = {
+          id: new Date().toISOString(),
+          name: treeName,
+          type: treeType,
+          trunkSummary: trunk,
+          leafLeftStory: leftLeaf,
+          leafRightMyview: rightLeaf,
+          questionFruit: questionFruit,
+          createdAt: new Date().getTime(),
+          cardColor: CARD_COLORS[0],
+        };
+        onSave(newTree);
+      };
+
+      const leafStyle = {
+        backgroundColor: tree.colors.leaf,
+        color: tree.colors.text,
+        borderColor: tree.colors.text,
+      };
+      const leafLabelStyle = { color: tree.colors.text };
+
+      return (
+        <div className="w-full max-w-6xl mx-auto p-2 md:p-4 animate-fade-in flex flex-col h-full">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => setPage('select')} className="text-gray-500 hover:text-gray-800 transition-colors">
+              <Icon name="arrowLeft" className="w-8 h-8" />
+            </button>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2">
+                <input
+                  type="text"
+                  value={treeName}
+                  onChange={(e) => setTreeName(e.target.value)}
+                  className="text-2xl md:text-3xl font-bold text-gray-800 bg-transparent text-center outline-none focus:ring-2 focus:ring-gray-300 rounded-lg p-1"
+                />
+                <Icon name="edit" className="w-5 h-5 text-gray-400"/>
+              </div>
+              <div className="text-6xl mt-2">{tree.emoji}</div>
+            </div>
+            <div className="w-8"></div>
+          </div>
+
+          <div className="flex-grow flex flex-col gap-4">
+            <div className="flex flex-col gap-2 h-28">
+              <label className={`relative text-lg flex items-center gap-2 font-bold text-red-700`}>🍎 질문 열매
+                <AnimatedEmoji emoji="❓" isVisible={isQuestionFruitActive} />
+              </label>
+              <textarea
+                value={questionFruit} onChange={(e) => setQuestionFruit(e.target.value)} onFocus={() => setQuestionFruitActive(true)} onBlur={() => setQuestionFruitActive(false)}
+                placeholder="오늘의 배움과 관련하여 궁금한 점을 질문으로 만들어보세요."
+                className={`w-full h-full p-4 focus:outline-none transition-colors bg-red-100 text-red-900 border-2 border-red-700 rounded-2xl resize-none shadow-md placeholder:text-current placeholder:opacity-60`}
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+              <div className="flex flex-col gap-2 h-[30rem] md:h-auto">
+                <label style={leafLabelStyle} className={`relative text-lg flex items-center gap-2 font-bold`}>🍃 문장수집
+                  <AnimatedEmoji emoji="✏️" isVisible={isLeftLeafActive} />
+                </label>
+                <textarea
+                  value={leftLeaf} onChange={(e) => setLeftLeaf(e.target.value)} onFocus={() => setLeftLeafActive(true)} onBlur={() => setLeftLeafActive(false)}
+                  placeholder="책을 읽거나 영상을 보며 가장 기억에 남는 장면을 적어보세요." style={leafStyle}
+                  className={`w-full h-full p-4 focus:outline-none transition-colors rounded-2xl resize-none shadow-md border-2 placeholder:text-current placeholder:opacity-60`}
+                />
+              </div>
+              <div className="flex flex-col gap-2 h-[30rem] md:h-auto">
+                <label style={leafLabelStyle} className={`relative text-lg flex items-center gap-2 font-bold`}>🍃 나의 생각과 경험
+                  <AnimatedEmoji emoji="💭" isVisible={isRightLeafActive} />
+                </label>
+                <textarea
+                  value={rightLeaf} onChange={(e) => setRightLeaf(e.target.value)} onFocus={() => setRightLeafActive(true)} onBlur={() => setRightLeafActive(false)}
+                  placeholder="나의 생각이나 경험과 연결해서 자유롭게 글을 써보세요." style={leafStyle}
+                  className={`w-full h-full p-4 focus:outline-none transition-colors rounded-2xl resize-none shadow-md border-2 placeholder:text-current placeholder:opacity-60`}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 h-48">
+              <label className={`relative text-lg flex items-center gap-2 font-bold text-amber-800`}>🌳 오늘의 배움
+                <AnimatedEmoji emoji="✨" isVisible={isTrunkActive} />
+              </label>
+              <textarea
+                value={trunk} onChange={(e) => setTrunk(e.target.value)} onFocus={() => setTrunkActive(true)} onBlur={() => setTrunkActive(false)}
+                placeholder="오늘 새로 알게 된 사실이나 중요한 개념을 정리해보세요."
+                className={`w-full h-full p-4 focus:outline-none transition-colors bg-amber-100 text-amber-900 border-2 border-amber-800 rounded-2xl resize-none shadow-md placeholder:text-current placeholder:opacity-60`}
+              />
+            </div>
+          </div>
+
+          <div className="text-center mt-auto pt-8 pb-4">
+            <button onClick={handleSave} className="bg-gradient-to-r from-yellow-300 to-yellow-200 text-yellow-800 font-bold px-10 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2 mx-auto">
+              <Icon name="save" className="w-6 h-6" />
+              이 나무 저장하기
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    const ForestGalleryPage = ({ trees, setTrees, setPage }) => {
+      const fileInputRef = useRef(null);
+      const [editingTree, setEditingTree] = useState(null);
+
+      const handleEditClick = (tree) => { setEditingTree({ ...tree }); };
+      const handleContentChange = (field, value) => { setEditingTree(prev => ({ ...prev, [field]: value })); };
+      const handleSaveEdit = () => {
+        setTrees(prevTrees => prevTrees.map(t => t.id === editingTree.id ? editingTree : t));
+        setEditingTree(null);
+      };
+
+      const handleExport = (treeId) => {
+        if (typeof html2canvas === 'undefined') {
+          alert('내려받기 기능을 불러오고 있어요. 잠시 후 다시 시도해주세요.');
+          return;
+        }
+        const elementToClone = document.getElementById(`tree-${treeId}`);
+        if (!elementToClone) return;
+
+        const clone = elementToClone.cloneNode(true);
+        clone.style.width = `${elementToClone.offsetWidth}px`;
+        clone.style.position = 'absolute';
+        clone.style.left = '-9999px';
+        clone.style.height = 'auto';
+        clone.style.minHeight = 'auto';
+        document.body.appendChild(clone);
+
+        const act = clone.querySelector('.actions-container');
+        if (act) act.style.display = 'none';
+
+        html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: clone.style.backgroundColor })
+          .then(canvas => {
+            const link = document.createElement('a');
+            link.download = `생각나무-${treeId.substring(0, 4)}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            document.body.removeChild(clone);
+          })
+          .catch(err => {
+            console.error("Image export failed:", err);
+            document.body.removeChild(clone);
+          });
+      };
+
+      const handleDownloadAll = () => {
+        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(trees))}`;
+        const link = document.createElement("a");
+        link.href = jsonString;
+        link.download = "생각의숲_백업.json";
+        link.click();
+      };
+
+      const handleRestoreClick = () => { fileInputRef.current.click(); };
+      const handleColorChange = (treeId, color) => {
+        setTrees(prev => prev.map(t => t.id === treeId ? { ...t, cardColor: color } : t));
+      };
+
+      const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const restoredTrees = JSON.parse(e.target.result);
+            if (Array.isArray(restoredTrees) && restoredTrees.every(t => t.id && t.type && t.name)) {
+              setTrees(restoredTrees);
+              alert('데이터를 성공적으로 복원했어요!');
+            } else {
+              alert('올바른 형식의 파일이 아니에요.');
+            }
+          } catch (error) {
+            alert('파일을 읽는 데 실패했어요.');
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = null;
+      };
+
+      // --- 카드 컴포넌트 ---
+      const TreeCard = ({ tree }) => {
+        const treeInfo = TREE_TYPES[tree.type];
+        const isEditing = editingTree && editingTree.id === tree.id;
+        const [showPalette, setShowPalette] = useState(false);
+        const colorPickerRef = useRef(null);
+
+        return (
+          <div id={`tree-${tree.id}`} style={{backgroundColor: tree.cardColor || 'white'}} className="rounded-2xl p-6 shadow-lg flex flex-col gap-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-5xl">{treeInfo.emoji}</span>
+                <div>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editingTree.name}
+                      onChange={(e) => handleContentChange('name', e.target.value)}
+                      className="text-xl font-bold text-gray-800 bg-white/50 rounded p-1 w-full border"
+                    />
+                  ) : (
+                    <h3 className="text-xl font-bold text-gray-800">{tree.name}</h3>
+                  )}
+                  <p className="text-sm text-gray-500">{new Date(tree.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm text-gray-700 flex-grow overflow-visible">
+              {isEditing ? (
+                <>
+                  <textarea value={editingTree.trunkSummary} onChange={(e) => handleContentChange('trunkSummary', e.target.value)} placeholder="오늘의 배움" className="w-full p-2 rounded bg-white/50 resize-y border"/>
+                  <textarea value={editingTree.leafLeftStory} onChange={(e) => handleContentChange('leafLeftStory', e.target.value)} placeholder="문장수집" className="w-full p-2 rounded bg-white/50 resize-y border"/>
+                  <textarea value={editingTree.leafRightMyview} onChange={(e) => handleContentChange('leafRightMyview', e.target.value)} placeholder="나의 생각과 경험" className="w-full p-2 rounded bg-white/50 resize-y border"/>
+                  <textarea value={editingTree.questionFruit} onChange={(e) => handleContentChange('questionFruit', e.target.value)} placeholder="질문 열매" className="w-full p-2 rounded bg-white/50 resize-y border"/>
+                </>
+              ) : (
+                <>
+                  {tree.trunkSummary && <p className="whitespace-pre-wrap break-words"><strong>🌳 오늘의 배움:</strong> {tree.trunkSummary}</p>}
+                  {tree.leafLeftStory && <p className="whitespace-pre-wrap break-words"><strong>🍃 문장수집:</strong> {tree.leafLeftStory}</p>}
+                  {tree.leafRightMyview && <p className="whitespace-pre-wrap break-words"><strong>🍃 나의 생각과 경험:</strong> {tree.leafRightMyview}</p>}
+                  {tree.questionFruit && <p className="whitespace-pre-wrap break-words"><strong>🍎 질문 열매:</strong> {tree.questionFruit}</p>}
+                </>
+              )}
+            </div>
+
+            {showPalette && (
+              <div className="flex gap-2 items-center justify-center p-2 bg-black/10 rounded-full">
+                {CARD_COLORS.map(color => (
+                  <button key={color} onClick={() => handleColorChange(tree.id, color)} style={{backgroundColor: color}} className={`w-6 h-6 rounded-full border-2 ${tree.cardColor === color ? 'border-gray-800' : 'border-white'}`}></button>
+                ))}
+                <div className="w-8 h-8 relative rounded-full overflow-hidden border-2 border-white cursor-pointer" onClick={() => colorPickerRef.current.click()}>
+                  <div className="w-full h-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500"></div>
+                  <input ref={colorPickerRef} type="color" className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" onInput={(e) => handleColorChange(tree.id, e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            <div className="actions-container flex justify-end items-center gap-2 mt-auto">
+              {isEditing ? (
+                <button onClick={handleSaveEdit} className="text-sm text-green-600 font-semibold flex items-center gap-1 hover:underline">
+                  <Icon name="check" className="w-5 h-5" /> 저장
+                </button>
+              ) : (
+                <>
+                  <button onClick={() => setShowPalette(!showPalette)} className="text-gray-400 hover:text-gray-700 p-1" title="색상 변경">
+                    <Icon name="palette" className="w-5 h-5"/>
+                  </button>
+                  <button onClick={() => handleEditClick(tree)} className="text-gray-400 hover:text-gray-700 p-1" title="내용 수정">
+                    <Icon name="edit" className="w-5 h-5"/>
+                  </button>
+                  <button onClick={() => handleExport(tree.id)} className="export-button text-sm text-yellow-600 font-semibold flex items-center gap-1 hover:underline">
+                    <Icon name="download" className="w-4 h-4" /> 내려받기
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )
+      };
+
+      return (
+        <div className="w-full max-w-6xl mx-auto p-4">
+          <div className="text-center mb-8 relative">
+            <h2 className="text-4xl font-bold text-gray-800">생각의 숲</h2>
+            <p className="text-lg text-gray-600 mt-2">지금까지 내가 심은 생각 나무들</p>
+            <div className="absolute top-0 right-0 flex gap-2">
+              <button onClick={handleDownloadAll} title="전체 내려받기" className="bg-white/80 p-2 rounded-full shadow-md hover:bg-gray-100 transition">
+                <Icon name="download" className="w-6 h-6 text-gray-600"/>
+              </button>
+              <button onClick={handleRestoreClick} title="데이터 복원" className="bg-white/80 p-2 rounded-full shadow-md hover:bg-gray-100 transition">
+                <Icon name="upload" className="w-6 h-6 text-gray-600"/>
+              </button>
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+            </div>
+          </div>
+          {trees.length === 0 ? (
+            <div className="text-center text-gray-500 py-20">
+              <p className="text-2xl mb-4">🌳</p>
+              <p>아직 심은 나무가 없어요.</p>
+              <button onClick={() => setPage('select')} className="mt-4 text-yellow-600 font-bold">첫 나무 심으러 가기</button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {trees.map(tree => <TreeCard key={tree.id} tree={tree} />)}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const OurForestPage = () => (
+      <div className="w-full h-full flex flex-col">
+        <iframe
+          src="https://songnae1.padlet.org/chichiboo/my-glorious-padlet-6s44sgiixrx1dzdr"
+          className="w-full flex-grow border-0"
+          title="Our Forest Padlet"
+        ></iframe>
+      </div>
+    );
+
+    // --- 메인 앱 컴포넌트 ---
+    function App() {
+      const [page, setPage] = useState('home');
+      const [trees, setTrees] = useState([]);
+      const [selectedTree, setSelectedTree] = useState(null);
+      const [showToast, setShowToast] = useState(false);
+
+      // 로컬 저장소 로드/저장
+      useEffect(() => {
+        try {
+          const saved = localStorage.getItem('forestOfThoughts');
+          if (saved) setTrees(JSON.parse(saved));
+        } catch (e) { console.error(e); }
+      }, []);
+      useEffect(() => {
+        try {
+          localStorage.setItem('forestOfThoughts', JSON.stringify(trees));
+        } catch (e) { console.error(e); }
+      }, [trees]);
+
+      const handleSelectTree = (treeType) => { setSelectedTree(treeType); setPage('create'); };
+      const handleSaveTree = (newTree) => {
+        setTrees(prev => [newTree, ...prev]);
+        setShowToast(true);
+        setPage('gallery');
+      };
+
+      const renderPage = () => {
+        switch (page) {
+          case 'select': return <SelectTreePage onSelectTree={handleSelectTree} setPage={setPage} />;
+          case 'create': return <CreateTreePage treeType={selectedTree} onSave={handleSaveTree} setPage={setPage} />;
+          case 'gallery': return <ForestGalleryPage trees={trees} setTrees={setTrees} setPage={setPage} />;
+          case 'ourForest': return <OurForestPage />;
+          case 'home':
+          default: return <HomePage setPage={setPage} />;
+        }
+      };
+
+      return (
+        <main style={{ backgroundColor: 'hsl(80, 60%, 96%)', fontFamily: "'Noto Sans KR', sans-serif" }} className="min-h-screen font-sans flex flex-col relative">
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/30 to-transparent -z-10"></div>
+
+          <div className="flex-grow flex flex-col p-4 justify-center pb-24">
+            {page !== 'ourForest' && renderPage()}
+          </div>
+
+          {page === 'ourForest' && (
+            <div className="absolute inset-0 pb-24">
+              <OurForestPage />
+            </div>
+          )}
+
+          <footer className="fixed bottom-16 left-0 right-0 h-8 flex items-center justify-center text-xs text-gray-500 bg-white/70 backdrop-blur-lg z-20">
+            <a href="https://litt.ly/chichiboo" target="_blank" rel="noopener noreferrer" className="hover:underline">
+              created by. 교육뮤지컬 꿈꾸는 치수쌤
+            </a>
+          </footer>
+
+          {/* 상단 그림자 제거하여 footer와 깔끔하게 맞닿도록 */}
+          <nav className="fixed bottom-0 left-0 right-0 bg-white/70 backdrop-blur-lg z-20">
+            <div className="max-w-md mx-auto flex justify-around items-center h-16">
+              <button onClick={() => setPage('home')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${page === 'home' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}>
+                <Icon name="home" className="w-6 h-6" />
+                <span className="text-xs font-bold">홈</span>
+              </button>
+              <button onClick={() => setPage('select')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${page === 'select' || page === 'create' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}>
+                <Icon name="add" className="w-6 h-6" />
+                <span className="text-xs font-bold">나무 심기</span>
+              </button>
+              <button onClick={() => setPage('gallery')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${page === 'gallery' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}>
+                <Icon name="forest" className="w-6 h-6" />
+                <span className="text-xs font-bold">나의 숲</span>
+              </button>
+              <button onClick={() => setPage('ourForest')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${page === 'ourForest' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}>
+                <Icon name="users" className="w-6 h-6" />
+                <span className="text-xs font-bold">우리의 숲</span>
+              </button>
+            </div>
+          </nav>
+
+          <Toast
+            message="🎉 멋진 생각 나무가 저장되었어요!"
+            isVisible={showToast}
+            onDismiss={() => setShowToast(false)}
+          />
+        </main>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
