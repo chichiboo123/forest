@@ -95,7 +95,7 @@
       );
     };
 
-    // --- 페이지 컴포넌트 ---
+    // --- 페이지 컴포넌트 (홈/선택/작성: 기존 정렬 유지 = 가운데) ---
     const HomePage = ({ setPage }) => (
       <div className="flex flex-col items-center justify-center h-full text-center p-4">
         <h1 style={{ fontFamily: "'Grandiflora One', cursive", fontWeight: 700 }} className="text-5xl md:text-7xl font-bold text-gray-800 drop-shadow-md">
@@ -246,7 +246,7 @@
           </div>
 
           <div className="text-center mt-auto pt-8 pb-4">
-            <button onClick={handleSave} className="bg-gradient-to-r from-yellow-300 to-yellow-200 text-yellow-800 font-bold px-10 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2 mx-auto">
+            <button onClick={handleSave} className="bg-gradient-to-r from-yellow-300 to-yellow-200 text-yellow-800 font-bold px-10 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 inline-flex items-center gap-2">
               <Icon name="save" className="w-6 h-6" />
               이 나무 저장하기
             </button>
@@ -255,16 +255,17 @@
       );
     };
 
+    // --- 나의 숲: 카드 내부만 좌측 정렬 + IME 안정 편집 + 삭제/되돌리기 ---
     const ForestGalleryPage = ({ trees, setTrees, setPage }) => {
       const fileInputRef = useRef(null);
-      const [editingTree, setEditingTree] = useState(null);
+      const [editingTree, setEditingTree] = useState(null); // { id }
       const [undoTree, setUndoTree] = useState(null);
       const undoTimerRef = useRef(null);
 
-      const handleEditClick = (tree) => setEditingTree({ ...tree });
-      const handleContentChange = (field, value) => setEditingTree(prev => ({ ...prev, [field]: value }));
-      const handleSaveEdit = () => {
-        setTrees(prevTrees => prevTrees.map(t => t.id === editingTree.id ? editingTree : t));
+      const startEdit = (tree) => setEditingTree({ id: tree.id });
+
+      const saveEditFor = (treeId, draft) => {
+        setTrees(prev => prev.map(t => t.id === treeId ? { ...t, ...draft } : t));
         setEditingTree(null);
       };
 
@@ -356,16 +357,41 @@
         event.target.value = null;
       };
 
-      // --- 카드 컴포넌트 ---
+      // --- 카드 컴포넌트 (★내부 전부 좌측 정렬) ---
       const TreeCard = ({ tree }) => {
         const treeInfo = TREE_TYPES[tree.type];
         const isEditing = editingTree && editingTree.id === tree.id;
+
+        // 로컬 드래프트 상태 (IME 안정)
+        const [draft, setDraft] = useState({
+          name: tree.name,
+          trunkSummary: tree.trunkSummary || '',
+          leafLeftStory: tree.leafLeftStory || '',
+          leafRightMyview: tree.leafRightMyview || '',
+          questionFruit: tree.questionFruit || '',
+        });
+
+        useEffect(() => {
+          if (isEditing) {
+            setDraft({
+              name: tree.name,
+              trunkSummary: tree.trunkSummary || '',
+              leafLeftStory: tree.leafLeftStory || '',
+              leafRightMyview: tree.leafRightMyview || '',
+              questionFruit: tree.questionFruit || '',
+            });
+          }
+        }, [isEditing, tree.id]);
+
+        const composing = useRef(false);
+        const commitIfNotComposing = () => { /* no-op; 저장 버튼에서 커밋 */ };
+
         const [showPalette, setShowPalette] = useState(false);
         const colorPickerRef = useRef(null);
 
         return (
-          <div id={`tree-${tree.id}`} style={{backgroundColor: tree.cardColor || 'white'}} className="relative rounded-2xl p-6 shadow-lg flex flex-col gap-4">
-            {/* 삭제 버튼 (UI 전용) */}
+          <div id={`tree-${tree.id}`} style={{backgroundColor: tree.cardColor || 'white'}} className="relative rounded-2xl p-6 shadow-lg flex flex-col gap-4 text-left">
+            {/* 삭제 버튼 */}
             <button
               onClick={() => handleDelete(tree.id)}
               className="ui-only absolute top-2 right-2 text-gray-400 hover:text-red-600 font-bold text-lg"
@@ -376,36 +402,40 @@
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
                 <span className="text-5xl">{treeInfo.emoji}</span>
-                <div>
+                <div className="min-w-0 text-left">
                   {isEditing ? (
                     <input
                       type="text"
-                      value={editingTree.name}
-                      onChange={(e) => handleContentChange('name', e.target.value)}
-                      className="text-xl font-bold text-gray-800 bg-white/50 rounded p-1 w-full border"
+                      value={draft.name}
+                      onChange={(e) => setDraft(d => ({ ...d, name: e.target.value }))}
+                      onCompositionStart={() => { composing.current = true; }}
+                      onCompositionEnd={(e) => { composing.current = false; setDraft(d => ({ ...d, name: e.target.value })); commitIfNotComposing(); }}
+                      onBlur={() => commitIfNotComposing()}
+                      autoFocus
+                      className="text-xl font-bold text-gray-800 bg-white/50 rounded p-1 w-full border text-left"
                     />
                   ) : (
-                    <h3 className="text-xl font-bold text-gray-800">{tree.name}</h3>
+                    <h3 className="text-xl font-bold text-gray-800 truncate text-left">{tree.name}</h3>
                   )}
-                  <p className="text-sm text-gray-500">{new Date(tree.createdAt).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-500 text-left">{new Date(tree.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2 text-sm text-gray-700 flex-grow overflow-visible">
+            <div className="space-y-2 text-sm text-gray-700 flex-grow overflow-visible text-left">
               {isEditing ? (
                 <>
-                  <textarea value={editingTree.trunkSummary} onChange={(e) => handleContentChange('trunkSummary', e.target.value)} placeholder="오늘의 배움" className="w-full p-2 rounded bg-white/50 resize-y border"/>
-                  <textarea value={editingTree.leafLeftStory} onChange={(e) => handleContentChange('leafLeftStory', e.target.value)} placeholder="문장수집" className="w-full p-2 rounded bg-white/50 resize-y border"/>
-                  <textarea value={editingTree.leafRightMyview} onChange={(e) => handleContentChange('leafRightMyview', e.target.value)} placeholder="나의 생각과 경험" className="w-full p-2 rounded bg-white/50 resize-y border"/>
-                  <textarea value={editingTree.questionFruit} onChange={(e) => handleContentChange('questionFruit', e.target.value)} placeholder="질문 열매" className="w-full p-2 rounded bg-white/50 resize-y border"/>
+                  <textarea value={draft.trunkSummary} onChange={(e) => setDraft(d => ({ ...d, trunkSummary: e.target.value }))} placeholder="오늘의 배움" className="w-full p-2 rounded bg-white/50 resize-y border text-left"/>
+                  <textarea value={draft.leafLeftStory} onChange={(e) => setDraft(d => ({ ...d, leafLeftStory: e.target.value }))} placeholder="문장수집" className="w-full p-2 rounded bg-white/50 resize-y border text-left"/>
+                  <textarea value={draft.leafRightMyview} onChange={(e) => setDraft(d => ({ ...d, leafRightMyview: e.target.value }))} placeholder="나의 생각과 경험" className="w-full p-2 rounded bg-white/50 resize-y border text-left"/>
+                  <textarea value={draft.questionFruit} onChange={(e) => setDraft(d => ({ ...d, questionFruit: e.target.value }))} placeholder="질문 열매" className="w-full p-2 rounded bg-white/50 resize-y border text-left"/>
                 </>
               ) : (
                 <>
-                  {tree.trunkSummary && <p className="whitespace-pre-wrap break-words"><strong>🌳 오늘의 배움:</strong> {tree.trunkSummary}</p>}
-                  {tree.leafLeftStory && <p className="whitespace-pre-wrap break-words"><strong>🍃 문장수집:</strong> {tree.leafLeftStory}</p>}
-                  {tree.leafRightMyview && <p className="whitespace-pre-wrap break-words"><strong>🍃 나의 생각과 경험:</strong> {tree.leafRightMyview}</p>}
-                  {tree.questionFruit && <p className="whitespace-pre-wrap break-words"><strong>🍎 질문 열매:</strong> {tree.questionFruit}</p>}
+                  {tree.trunkSummary && <p className="whitespace-pre-wrap break-words text-left"><strong>🌳 오늘의 배움:</strong> {tree.trunkSummary}</p>}
+                  {tree.leafLeftStory && <p className="whitespace-pre-wrap break-words text-left"><strong>🍃 문장수집:</strong> {tree.leafLeftStory}</p>}
+                  {tree.leafRightMyview && <p className="whitespace-pre-wrap break-words text-left"><strong>🍃 나의 생각과 경험:</strong> {tree.leafRightMyview}</p>}
+                  {tree.questionFruit && <p className="whitespace-pre-wrap break-words text-left"><strong>🍎 질문 열매:</strong> {tree.questionFruit}</p>}
                 </>
               )}
             </div>
@@ -425,7 +455,10 @@
 
             <div className="actions-container flex justify-end items-center gap-2 mt-auto">
               {isEditing ? (
-                <button onClick={handleSaveEdit} className="text-sm text-green-600 font-semibold flex items-center gap-1 hover:underline">
+                <button
+                  onClick={() => saveEditFor(tree.id, draft)}
+                  className="text-sm text-green-600 font-semibold flex items-center gap-1 hover:underline"
+                >
                   <Icon name="check" className="w-5 h-5" /> 저장
                 </button>
               ) : (
@@ -433,7 +466,7 @@
                   <button onClick={() => setShowPalette(!showPalette)} className="ui-only text-gray-400 hover:text-gray-700 p-1" title="색상 변경">
                     <Icon name="palette" className="w-5 h-5"/>
                   </button>
-                  <button onClick={() => handleEditClick(tree)} className="ui-only text-gray-400 hover:text-gray-700 p-1" title="내용 수정">
+                  <button onClick={() => startEdit(tree)} className="ui-only text-gray-400 hover:text-gray-700 p-1" title="내용 수정">
                     <Icon name="edit" className="w-5 h-5"/>
                   </button>
                   <button onClick={() => handleExport(tree.id)} className="ui-only export-button text-sm text-yellow-600 font-semibold flex items-center gap-1 hover:underline" title="이미지로 저장">
@@ -474,7 +507,7 @@
             </div>
           )}
 
-          {/* 되돌리기 버튼 (6초간 노출, 또는 수동 클릭시 즉시 복원) */}
+          {/* 되돌리기 버튼 (6초 노출) */}
           {undoTree && (
             <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30">
               <button
@@ -492,7 +525,7 @@
     const OurForestPage = () => (
       <div className="w-full h-full flex flex-col">
         <iframe
-          src="https://songnae1.padlet.org/chichiboo/my-glorious-padlet-6s44sgiixrx1dzdr"
+          src="https://songnae1.padlet.org/chichiboo/padlet-6s44sgiixrx1dzdr"
           className="w-full flex-grow border-0"
           title="Our Forest Padlet"
         ></iframe>
@@ -551,17 +584,16 @@
           )}
 
           <footer className="fixed bottom-16 left-0 right-0 h-8 flex items-center justify-center text-xs text-gray-500 bg-white/70 backdrop-blur-lg z-20">
-              <a
-                 href="https://litt.ly/chichiboo"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 className="hover:underline"
-              >
+            <a
+              href="https://litt.ly/chichiboo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
               created by. 교육뮤지컬 꿈꾸는 치수쌤
             </a>
           </footer>
 
-          {/* 상단 그림자 제거하여 footer와 자연스럽게 이어지도록 */}
           <nav className="fixed bottom-0 left-0 right-0 bg-white/70 backdrop-blur-lg z-20">
             <div className="max-w-md mx-auto flex justify-around items-center h-16">
               <button onClick={() => setPage('home')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${page === 'home' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}>
