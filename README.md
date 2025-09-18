@@ -54,3 +54,10 @@
 - 구글 슬라이드 ID는 FruitWritePage 컴포넌트의 SLIDE_ID 변수에서 수정합니다.
 - 나무 종류와 색상은 TREE_TYPES, CARD_COLORS에서 조정할 수 있습니다.
 - 배포는 별도의 서버 없이도 가능하며 GitHub Pages, Netlify 등 정적 호스팅 서비스에 올려 사용할 수 있습니다.
+
+## 저작권과 아이디어 존중
+
+이 웹앱은 교육적 목적으로 제작되었으며 아이디어와 창작물을 존중해 주시기 바랍니다.  
+개발과 아이디어는 교육뮤지컬 꿈꾸는 치수쌤이 진행했습니다.  
+자세한 정보와 더 많은 프로젝트는 다음 링크에서 확인할 수 있습니다.  
+[https://litt.ly/chichiboo](https://litt.ly/chichiboo)
