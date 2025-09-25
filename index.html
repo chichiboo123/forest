@@ -526,6 +526,19 @@
       </div>
     );
 
+    /* ✅ 새로 추가: 생각사전 페이지 */
+    const ThinkDictionaryPage = () => (
+      <div className="w-full h-full flex flex-col">
+        <iframe
+          src="https://songnae1.padlet.org/chichiboo/padlet-erf814wx9cg92br4"
+          className="w-full flex-grow border-0"
+          title="생각사전 Padlet"
+          allow="camera; microphone; display-capture"
+          referrerPolicy="no-referrer-when-downgrade"
+        ></iframe>
+      </div>
+    );
+
     // --- 열매맺기(논설문 쓰기) 페이지 ---
     const FruitWritePage = () => {
       const SLIDE_ID = "1yI4jdJCEnCzGNqEvdPtmfQjGQwmnPzrU6bGfIbpAq7g";
@@ -801,13 +814,14 @@
 
       const renderPage = () => {
         switch (page) {
-          case 'select':  return <SelectTreePage onSelectTree={handleSelectTree} setPage={setPage} />;
-          case 'create':  return <CreateTreePage treeType={selectedTree} onSave={handleSaveTree} setPage={setPage} />;
-          case 'gallery': return <ForestGalleryPage trees={trees} setTrees={setTrees} setPage={setPage} />;
-          case 'ourForest': return <OurForestPage />;
-          case 'essay': return <FruitWritePage />;
+          case 'select':     return <SelectTreePage onSelectTree={handleSelectTree} setPage={setPage} />;
+          case 'create':     return <CreateTreePage treeType={selectedTree} onSave={handleSaveTree} setPage={setPage} />;
+          case 'gallery':    return <ForestGalleryPage trees={trees} setTrees={setTrees} setPage={setPage} />;
+          case 'ourForest':  return <OurForestPage />;
+          case 'dictionary': return <ThinkDictionaryPage />;  // ✅ 추가
+          case 'essay':      return <FruitWritePage />;
           case 'home':
-          default:        return <HomePage setPage={setPage} />;
+          default:           return <HomePage setPage={setPage} />;
         }
       };
 
@@ -816,12 +830,18 @@
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/30 to-transparent -z-10"></div>
 
           <div className="flex-grow flex flex-col p-4 justify-center pb-24">
-            {page !== 'ourForest' && renderPage()}
+            {!['ourForest','dictionary'].includes(page) && renderPage()}
           </div>
 
           {page === 'ourForest' && (
             <div className="absolute inset-0 pb-24">
               <OurForestPage />
+            </div>
+          )}
+
+          {page === 'dictionary' && (
+            <div className="absolute inset-0 pb-24">
+              <ThinkDictionaryPage />
             </div>
           )}
 
@@ -836,7 +856,7 @@
             </a>
           </footer>
 
-          {/* 하단 네비: '열매맺기'를 '우리의 숲' 오른쪽으로 배치 */}
+          {/* 하단 네비: '열매맺기' 오른쪽에 '생각사전' 추가 */}
           <nav className="fixed bottom-0 left-0 right-0 bg-white/70 backdrop-blur-lg z-20">
             <div className="max-w-md mx-auto flex justify-around items-center h-16">
               <button onClick={() => setPage('home')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${page === 'home' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}>
@@ -858,6 +878,14 @@
               <button onClick={() => setPage('essay')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${page === 'essay' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}>
                 <Icon name="fruit" className="w-6 h-6" />
                 <span className="text-xs font-bold">열매맺기</span>
+              </button>
+              {/* ✅ 새 버튼: 생각사전 (JSX 주석 형식으로 수정) */}
+              <button
+                onClick={() => setPage('dictionary')}
+                className={`flex flex-col items-center gap-1 transition-colors w-16 ${page === 'dictionary' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}
+              >
+                <Icon name="fileTxt" className="w-6 h-6" />
+                <span className="text-xs font-bold">생각사전</span>
               </button>
             </div>
           </nav>
